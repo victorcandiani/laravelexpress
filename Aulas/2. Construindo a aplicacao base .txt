@@ -1,0 +1,125 @@
+--- Overview do Projeto ---
+Executando pela primeira vez
+No terminal do VsCode digite:
+./vendor/bin/sail up -d
+
+Na pasta
+~/.zshrc ou ~/.bashrc
+Adicione a linha abaixo:
+alias sail='[ -f sail ] && sh sail || sh vendor/bin/sail'
+
+E reinicie o terminal
+
+Adicionado alias, então pra chamar comandos do sail aó ivés de usar
+./vendor/bin/sail COMANDO
+
+Pode usar apenas
+sail COMANDO
+
+--- Criação do bando de dados e uso de migrations ---
+Criando as migrations
+Usando o comando:
+sail artisan make:migration create_addresses_table
+sail artisan make:migration NOME_DA_TABELA
+sail artisan -> biblioteca que executa a ação
+make:migration -> a ação
+NOME_DA_TABELA -> nome da tabela que deseja criar
+
+Ele cria o arquivo da migration dentro da pasta database>migrations
+
+Criado os campos da tabela dentro da migrations
+
+Schema::create('addresses', function (Blueprint $table) {
+    $table->id();
+    $table->string('city'); 
+    $table->char('state', 2);
+    $table->timestamps();
+});
+
+Outros Campos
+$table->id();
+$table->foreignId('company_id')->constrained();
+$table->foreignId('user_id')->constrained();
+$table->timestamps();
+$table->softDeletes();
+
+--- Implementação de soft deletes com campo UNIQUE ---
+
+$table->id();
+$table->string('name');
+$table->string('email')->unique(); <<----
+$table->timestamp('email_verified_at')->nullable();
+$table->string('password');
+$table->rememberToken();
+$table->timestamps();
+$table->softDeletes();    <<----
+
+os campos unique não são ignorados pelo banco mesmo com os softDeletes
+
+na migration através do laravel e do postgres é possível criar um índice e relacioná-lo a tabela de usuarios para serem removidos permitindo a duplicação de um usuario deletado anteriormente
+
+public function up(): void
+{
+    DB::unprepared("CREATE UNIQUE INDEX user_email_index on users(email) WHERE deleted_at IS NULL");
+}
+
+na função up() o DB::Unprepared permite rodar um comando SQL no banco de dados atraves da classe DB::
+
+public function down(): void
+{
+    Schema::table('users', function(Blueprint $table) {
+        $table->dropIndex('user_email_index');
+    });
+}
+
+Através da função down()
+
+os indices removidos são retirados da relação da tabela e assim permitindo a criação de um usuario com o email repetido
+
+--- Configuração da View de banco de dados e execução de migrations ---
+
+Criado a view de sales_comission
+$query = DB::table('sales as s')
+        ->join('sellers as sl', 'sl.id', '=', 's.seller_id')
+        ->join('clients as cl', 'cl.id', '=', 's.client_id')
+        ->join('companies as cp', 'cp.id', '=', 'sl.company_id')
+        ->join('addresses as ad', 'ad.id', '=', 'cl.address_id')
+        ->join('users as us', 'us.id', '=', 'sl.user_id')
+        ->join('users as uc', 'uc.id', '=', 'cl.user_id')
+        ->selectRaw("
+            cp.name as company,
+            us.name as seller,
+            uc.name as client,
+            ad.city,
+            ad.state,
+            s.sold_at,
+            s.status,
+            s.total_amount,
+            round(s.total_amount * cp.commission_rate / 100) as commission
+        ")->toSql();
+
+        DB::statement("CREATE MATERIALIZED VIEW sales_commission_view AS $query");
+
+para rodar as migrations:
+sail artisan migrate
+
+ERRO 1:
+
+SQLSTATE[42601]: Syntax error: 7 ERROR:  syntax error at or near "sold_at"
+LINE 1: ... "teste" char(1) not null, "created_at" timestamp(sold_at) w...
+                                                             ^ (Connection: pgsql, SQL: create table "sales" ("id" bigserial not null primary key, "seller_id" bigint not null, "client_id" bigint not null, "status" char(1) not null, "total_amount" integer not null, "teste" char(1) not null, "created_at" timestamp(sold_at) without time zone null, "updated_at" timestamp(sold_at) without time zone null, "created_at" timestamp(0) without time zone null, "updated_at" timestamp(0) without time zone null, "deleted_at" timestamp(0) without time zone null))
+
+Estava timestamps então ele estava tentando criar as colunas created_at e edited_at
+o correto é timestamp
+
+ERRO 2:   
+  SQLSTATE[42601]: Syntax error: 7 ERROR:  syntax error at or near "sold_at"
+LINE 1: ... "teste" char(1) not null, "created_at" timestamp(sold_at) w...
+                                                             ^ (Connection: pgsql, SQL: create table "sales" ("id" bigserial not null primary key, "seller_id" bigint not null, "client_id" bigint not null, "status" char(1) not null, "total_amount" integer not null, "teste" char(1) not null, "created_at" timestamp(sold_at) without time zone null, "updated_at" timestamp(sold_at) without time zone null, "created_at" timestamp(0) without time zone null, "updated_at" timestamp(0) without time zone null, "deleted_at" timestamp(0) without time zone null))
+
+o nome da coluna commission estava errado.
+
+para retornar uma migrate:
+sail artisan migrate:rollback
+
+--- Utilização de Models e Relacionamentos ---

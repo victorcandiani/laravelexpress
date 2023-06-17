@@ -1,0 +1,32 @@
+--- Visão geral do projeto e configuração do ambiente ---
+PHP
+
+Stack que vamos utilizar:
+TALL Stack = [Tailwind CSS, Alpine.JS, Laravel e Livewire]
+
+Tailwind CSS -> Framework CSS
+Alpine.JS -> Biblioteca Javascript (jQuery Atualizado)
+Laravel -> Framework PHP
+Livewire -> Pacote para criação de componentes reativos em PHP
+
+Vega-Lite -> Criação de gráficos em Javascript através de elementos JSON
+
+OpenAI -> API do GPT-3
+
+---
+Instalar
+Ubuntu - Microsoft Store 
+Docker - https://www.docker.com/products/docker-desktop/
+
+---
+Terminal do Ubuntu
+curl -s https://laravel.build/example-app?with=pgsql | bash 
+--> example-app = Nome do app
+--> ?with=pgsql = Pacotes a serem instalados juntos
+curl -s https://laravel.build/laravelexpress | bash 
+
+---
+Abrindo no VsCode
+no terminal digite:
+code laravelexpress
+--> code NOMEDAPASTA
