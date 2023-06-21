@@ -123,3 +123,4 @@ para retornar uma migrate:
 sail artisan migrate:rollback
 
 --- Utilização de Models e Relacionamentos ---
+teste
